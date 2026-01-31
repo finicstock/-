@@ -12,11 +12,13 @@ TOKEN = os.environ['TELEGRAM_TOKEN']
 CHAT_ID = os.environ['CHAT_ID']
 
 def get_market_data():
+    # 2년물 대신 3개월물과 5년물 추가
     tickers = {
         "📊 나스닥 선물": "NQ=F",
         "📊 S&P500 선물": "ES=F",
         "📊 다우 선물": "YM=F",
-        "🇺🇸 미 채권 2년물": "2Y=F", # 2Y=F가 안되면 ^ZT로 자동 시도하도록 하단 보강
+        "🇺🇸 미 채권 3개월": "^IRX",
+        "🇺🇸 미 채권 5년물": "^FVX",
         "🇺🇸 미 채권 10년물": "^TNX",
         "💵 달러지수": "DX-Y.NYB",
         "🇰🇷 달러/원 환율": "USDKRW=X"
@@ -27,34 +29,36 @@ def get_market_data():
     for name, sym in tickers.items():
         try:
             t = yf.Ticker(sym)
-            
-            # [전략] 먼저 5일치 데이터를 가져옵니다.
+            # 데이터 안정성을 위해 5일치 조회
             hist = t.history(period="5d")
             
-            # 데이터가 있으면 (최소 1개 이상)
             if not hist.empty:
                 current_price = hist['Close'].iloc[-1]
                 
-                # 등락 계산이 가능할 때 (데이터 2개 이상)
+                # 등락 계산 (데이터 2개 이상일 때)
                 if len(hist) >= 2:
                     prev_price = hist['Close'].iloc[-2]
                     change = current_price - prev_price
                     change_pct = (change / prev_price) * 100
                     emoji = "🔺" if change > 0 else "🔻"
-                    results += f"\n{name}: {current_price:,.2f} ({emoji} {abs(change_pct):.2f}%)"
+                    
+                    # 금리 등 수치가 낮은 항목은 쉼표 없이 소수점 2자리만 표시
+                    if current_price < 100:
+                        results += f"\n{name}: {current_price:.2f} ({emoji} {abs(change_pct):.2f}%)"
+                    else:
+                        results += f"\n{name}: {current_price:,.2f} ({emoji} {abs(change_pct):.2f}%)"
                 else:
-                    # 데이터가 1개뿐이면 가격만 표시
-                    results += f"\n{name}: {current_price:,.2f} (변동 확인불가)"
+                    results += f"\n{name}: {current_price:,.2f} (변동데이터 미비)"
             else:
-                # hist가 완전히 비었을 때 최후의 수단으로 현재가 직접 조회
+                # history가 비었을 경우 최후의 수단
                 price = t.fast_info.last_price
                 if price:
-                    results += f"\n{name}: {price:,.2f} (현재가)"
+                    results += f"\n{name}: {price:.2f} (현재가)"
                 else:
                     results += f"\n{name}: 점검 중"
                     
         except Exception:
-            results += f"\n{name}: 조회 일시중단"
+            results += f"\n{name}: 데이터 오류"
             
     results += "\n\n#미국증시 #주요지수 #환율 #채권금리"
     return results
