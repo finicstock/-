@@ -1,7 +1,11 @@
 import yfinance as yf
 import requests
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+
+# UTC 시간을 한국 시간(UTC+9)으로 변환
+now_kst = datetime.utcnow() + timedelta(hours=9)
+today_str = now_kst.strftime('%Y-%m-%d')
 
 # 깃허브 Secrets에서 가져오기
 TOKEN = os.environ['TELEGRAM_TOKEN']
@@ -19,7 +23,6 @@ def get_market_data():
         "🇰🇷 달러/원 환율": "USDKRW=X"
     }
     
-    today_str = datetime.now().strftime('%Y-%m-%d')
     results = f"📅 {today_str} 시장 브리핑\n"
     
     for name, sym in tickers.items():
