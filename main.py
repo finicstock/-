@@ -36,11 +36,18 @@ def get_market_data():
                 current_price = hist['Close'].iloc[-1]
                 
                 # 등락 계산 (데이터 2개 이상일 때)
-                if len(hist) >= 2:
-                    prev_price = hist['Close'].iloc[-2]
-                    change = current_price - prev_price
-                    change_pct = (change / prev_price) * 100
-                    emoji = "🔺" if change > 0 else "🔻"
+               if len(hist) >= 2:
+                prev_price = hist['Close'].iloc[-2]
+                change = current_price - prev_price
+                change_pct = (change / prev_price) * 100
+                
+                # 상승은 빨간색 삼각형(🔺), 하락은 파란색 화살표(⬇️)
+                emoji = "🔺" if change > 0 else "⬇️"
+                
+                if current_price < 100:
+                    results += f"\n{name}: {current_price:.2f} ({emoji} {abs(change_pct):.2f}%)"
+                else:
+                    results += f"\n{name}: {current_price:,.2f} ({emoji} {abs(change_pct):.2f}%)"
                     
                     # 금리 등 수치가 낮은 항목은 쉼표 없이 소수점 2자리만 표시
                     if current_price < 100:
