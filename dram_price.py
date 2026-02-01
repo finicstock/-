@@ -23,9 +23,9 @@ def get_ai_memory_data():
         # 닉스님이 올려주신 이미지의 표 순서와 사양에 맞게 정밀 타겟팅
         # (이름, 검색 키워드)
         targets = [
-            ("DDR5 16Gb (주류)", "DDR5 16Gb.*?\d+/\d+"),
-            ("DDR4 16Gb (주류)", "DDR4 16Gb.*?3200"),
-            ("DDR4 8Gb (주류)", "DDR4 8Gb.*?3200")
+            ("DDR5 16Gb", "DDR5 16Gb.*?\d+/\d+"),
+            ("DDR4 16Gb", "DDR4 16Gb.*?3200"),
+            ("DDR4 8Gb", "DDR4 8Gb.*?3200")
         ]
         
         for name, keyword in targets:
@@ -45,7 +45,7 @@ def get_ai_memory_data():
         if not found_data:
             return "⚠️ 타겟 품목 데이터를 찾지 못했습니다. 사이트 구조를 확인해주세요."
             
-        msg += "\n\n#DRAM #HBM #반도체정밀시황"
+        msg += "\n\n#DRAM #HBM #반도체시황"
         return msg
 
     except Exception as e:
