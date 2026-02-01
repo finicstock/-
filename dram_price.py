@@ -20,7 +20,6 @@ def get_ai_memory_data():
         msg = f"🤖 {today_str} AI/서버 메모리 시황\n"
         found_data = False
 
-        # 1. 개별 품목 타겟팅 (정교한 키워드 매칭)
         targets = [
             ("DDR5 16Gb", r"DDR5 16Gb.*?4800/5600"),
             ("DDR4 16Gb", r"DDR4 16Gb.*?3200"),
@@ -28,41 +27,53 @@ def get_ai_memory_data():
         ]
         
         for name, keyword in targets:
-            # 품목이 포함된 줄(Row)을 추출
             pattern = re.compile(rf"{keyword}.*?</tr>", re.IGNORECASE | re.DOTALL)
             match = pattern.search(content)
             
             if match:
                 row_html = match.group(0)
-                # 숫자만 모두 추출 (가격, 등락폭 등)
                 nums = re.findall(r"(\d+\.\d+)", row_html)
-                # 부호(+/-) 추출
+                # 부호 추출
                 sign_match = re.search(r"([+-])\d+\.\d+\s*%", row_html)
+                sign = sign_match.group(1) if sign_match else ""
                 
-                # 이미지 기준: 5번째 숫자가 Average, 마지막 숫자가 Change
                 if len(nums) >= 6:
-                    price = nums[4]
-                    change = nums[-1]
-                    sign = sign_match.group(1) if sign_match else ""
+                    price = nums[4]   # Session Average
+                    change = nums[5]  # Session Change
                     
-                    emoji = "🔺" if sign == "+" else ("⬇️" if sign == "-" else "🔹")
+                    # 변동률 숫자가 0.00인지 확인
+                    is_zero = float(change) == 0.0
+                    
+                    if is_zero:
+                        emoji = "➖"  # 보합 이모지
+                    elif sign == "-":
+                        emoji = "⬇️"  # 하락
+                    else:
+                        emoji = "🔺"  # 상승 (보통 +가 붙거나 부호가 없음)
+                    
                     msg += f"\n🔸 {name}: ${price} ({emoji}{sign}{change}%)"
                     found_data = True
 
-        # 2. DXI Index 추출 (가장 확실한 패턴으로 수정)
-        dxi_pattern = re.compile(r"DXI.*?(\d{1,3}(?:,\d{3})*(?:\.\d+)?).*?([+-])(\d+\.\d+)\s*%", re.IGNORECASE | re.DOTALL)
+        # DXI 지수 추출 및 보합 로직 적용
+        dxi_pattern = re.compile(r"DXI.*?(\d{1,3}(?:,\d{3})*(?:\.\d+)?).*?([+-])?(\d+\.\d+)\s*%", re.IGNORECASE | re.DOTALL)
         dxi_match = dxi_pattern.search(content)
         
         if dxi_match:
-            dxi_val = dxi_match.group(1)
-            dxi_sign = dxi_match.group(2)
-            dxi_change = dxi_match.group(3)
-            dxi_emoji = "🔺" if dxi_sign == "+" else "⬇️"
+            dxi_val, dxi_sign, dxi_change = dxi_match.groups()
+            dxi_sign = dxi_sign if dxi_sign else ""
+            
+            if float(dxi_change) == 0.0:
+                dxi_emoji = "➖"
+            elif dxi_sign == "-":
+                dxi_emoji = "⬇️"
+            else:
+                dxi_emoji = "🔺"
+                
             msg += f"\n\n📈 DXI Index: {dxi_val} ({dxi_emoji}{dxi_sign}{dxi_change}%)"
             found_data = True
 
         if not found_data:
-            return "⚠️ 타겟 데이터를 매칭하지 못했습니다."
+            return "⚠️ 데이터를 매칭하지 못했습니다."
             
         msg += "\n\n#DRAM #HBM #반도체시황"
         return msg
@@ -71,10 +82,4 @@ def get_ai_memory_data():
         return f"❌ 실행 에러: {str(e)}"
 
 def send_to_channel(text):
-    if not TOKEN or not CHAT_ID: return
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": CHAT_ID, "text": text})
-
-if __name__ == "__main__":
-    result = get_ai_memory_data()
-    send_to_channel(result)
+    if not
