@@ -11,7 +11,7 @@ CHAT_ID = os.environ.get('CHAT_ID')
 
 def get_ai_memory_data():
     url = "https://www.dramexchange.com/"
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     
     try:
         response = requests.get(url, headers=headers, timeout=15)
@@ -20,42 +20,39 @@ def get_ai_memory_data():
         msg = f"🤖 {today_str} AI/서버 메모리 시황\n"
         found_data = False
 
-        # 찾고 싶은 키워드들 (DDR5, DDR4, DXI 등)
-        targets = ["DDR5 16Gb", "DDR4 16Gb", "DDR4 8Gb"]
+        # 닉스님이 올려주신 이미지의 표 순서와 사양에 맞게 정밀 타겟팅
+        # (이름, 검색 키워드)
+        targets = [
+            ("DDR5 16Gb (주류)", "DDR5 16Gb.*?\d+/\d+"),
+            ("DDR4 16Gb (주류)", "DDR4 16Gb.*?3200"),
+            ("DDR4 8Gb (주류)", "DDR4 8Gb.*?3200")
+        ]
         
-        for target in targets:
-            # 더 유연한 정규식: 품목명 뒤에 나오는 첫 번째 숫자(가격)와 등락폭 추출
-            pattern = re.compile(rf"{target}.*?(\d+\.\d+).*?([+-]\d+\.\d+)", re.IGNORECASE | re.DOTALL)
+        for name, keyword in targets:
+            # 패턴 설명: 품목명...세션평균...세션변동률 순서로 추출
+            # 이미지상의 'Session Average'와 'Session Change' 값을 타겟팅합니다.
+            pattern = re.compile(rf"{keyword}.*?(\d+\.\d+).*?(\d+\.\d+).*?(\d+\.\d+).*?(\d+\.\d+).*?(\d+\.\d+).*?([+-]?\d+\.\d+)\s*%", re.IGNORECASE | re.DOTALL)
             match = pattern.search(content)
             
             if match:
-                price = match.group(1)
-                change = match.group(2)
-                emoji = "🔺" if "+" in change else "⬇️"
-                msg += f"\n🔸 {target}: ${price} ({emoji}{change.replace('+', '')}%)"
+                price = match.group(5)  # Session Average 값
+                change = match.group(6) # Session Change (%) 값
+                
+                emoji = "🔺" if float(change) > 0 else ("⬇️" if float(change) < 0 else "🔹")
+                msg += f"\n🔸 {name}: ${price} ({emoji}{change}%)"
                 found_data = True
 
-        # DXI 지수 별도 추출
-        dxi_pattern = re.compile(r"DXI.*?(\d+[\d,.]*).*?([+-]\d+\.\d+)", re.IGNORECASE | re.DOTALL)
-        dxi_match = dxi_pattern.search(content)
-        if dxi_match:
-            emoji = "🔺" if "+" in dxi_match.group(2) else "⬇️"
-            msg += f"\n\n📈 DXI Index: {dxi_match.group(1)} ({emoji}{dxi_match.group(2).replace('+', '')}%)"
-            found_data = True
-
         if not found_data:
-            return "⚠️ 현재 페이지에서 데이터를 찾을 수 없습니다. (구조 변경 확인 필요)"
+            return "⚠️ 타겟 품목 데이터를 찾지 못했습니다. 사이트 구조를 확인해주세요."
             
-        msg += "\n\n#DRAM #HBM #AI반도체"
+        msg += "\n\n#DRAM #HBM #반도체정밀시황"
         return msg
 
     except Exception as e:
-        return f"❌ 실행 에러 발생: {str(e)}"
+        return f"❌ 실행 에러: {str(e)}"
 
 def send_to_channel(text):
-    if not TOKEN or not CHAT_ID:
-        print("토큰이나 챗 ID가 설정되지 않았습니다.")
-        return
+    if not TOKEN or not CHAT_ID: return
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     requests.post(url, data={"chat_id": CHAT_ID, "text": text})
 
